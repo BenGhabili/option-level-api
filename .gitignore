@@ -134,3 +134,16 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+.venv/
+
+*.zip
+
+__pycache__/*.*
+
+layers/
+src/__pycache__/
+src/helpers/__pycache__/
+src/option_levels_api.egg-info/
+src/services/__pycache__/
+.DS_Store
