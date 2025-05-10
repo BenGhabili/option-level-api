@@ -1,9 +1,8 @@
 fastapi
 uvicorn
-pandas
-numpy
-yfinance
 python-dateutil
 magnum
 setuptools
 boto3
+ib_insync
+tzdata
