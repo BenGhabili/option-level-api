@@ -148,4 +148,5 @@ src/option_levels_api.egg-info/
 src/services/__pycache__/
 .DS_Store
 
-.venv
+.idea
+.data/

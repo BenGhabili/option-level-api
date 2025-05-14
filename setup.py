@@ -8,12 +8,8 @@ setup(
     install_requires=[
         "fastapi",
         "uvicorn",
-        "pandas",
-        "numpy",
-        "yfinance",
         "python-dateutil",
-        "scipy",
         "boto3",
-        "mangum",
+        "mangum"
     ],
 )
