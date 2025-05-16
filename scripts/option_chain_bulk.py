@@ -21,41 +21,57 @@ def connect_ib(market_data_type = 1, host: str = "127.0.0.1", port: int = 4001, 
 
     return ib
 
-def main(ticker: str, expiry_arg: str | None, width: int, data: int):
+def main(ticker_name: str, expiry_arg: str | None, width: int, data: int):
     ib = connect_ib(data)
 
     # spx = Index('SPX', 'CBOE', 'USD')
     # spy = Stock('SPY', 'SMART', 'USD')
-    spx = Contract(symbol='SPX', secType='IND', exchange='CBOE', currency='USD')
-    ib.qualifyContracts(spx)
+    if ticker_name == "SPX":
+        ticker_to_fetch = Contract(symbol='SPX', secType='IND', exchange='CBOE', currency='USD')
+        trading_class = "SPXW"
+        trading_exchange = "CBOE"
+        price_step = 5
+    else:
+        ticker_to_fetch = Stock(ticker_name, 'SMART', 'USD')
+        trading_exchange = "SMART"
+        trading_class = ticker_name
+        price_step = 1
+        
+        
+    # spx = Contract(symbol='SPX', secType='IND', exchange='CBOE', currency='USD')
+    ib.qualifyContracts(ticker_to_fetch)
     # ib.qualifyContracts(spy)
     
     # asset = ib.reqMktData(spx, '233', snapshot=False)
-    [ticker] = ib.reqTickers(spx)
+    [ticker] = ib.reqTickers(ticker_to_fetch)
     # [ticker] = ib.reqTickers(spy)
     
     ib.sleep(1)
     
     
-    spxValue = ticker.marketPrice()
+    asset_value = ticker.marketPrice()
     # spyValue = ticker.marketPrice()
     
     # print(f"SPY value: {spyValue}")
-    print(f"SPX last: {spxValue}")
+    print(f"{ticker_name} last: {asset_value}")
     
-    chains = ib.reqSecDefOptParams(spx.symbol, '', spx.secType, spx.conId)
+    chains = ib.reqSecDefOptParams(ticker_to_fetch.symbol, '', ticker_to_fetch.secType, ticker_to_fetch.conId)
     # chains = ib.reqSecDefOptParams(spy.symbol, '', spy.secType, spy.conId)
     
     # util.df(chains)
-    # print(df.to_string())
-    chain = next(c for c in chains if c.tradingClass == "SPXW" and c.exchange == "CBOE")
+    # print(df.to_string())     
+        
+    chain = next(c for c in chains if c.tradingClass == trading_class and c.exchange == trading_exchange)
     # chain = next(c for c in chains if c.tradingClass == "SPY" and c.exchange == "SMART")
     
     # util.df(chain)
     
     # print(f"Chain: {chain}")
     
-    strikes = [strike for strike in chain.strikes if strike %5 == 0 and spxValue - 20 < strike < spxValue + 20]
+    strikes = [strike for strike in chain.strikes
+               if strike %price_step == 0
+               and asset_value - width < strike < asset_value + width
+               ]
     # strikes = [strike for strike in chain.strikes if strike %1 == 0 and spyValue - 10 < strike < spyValue + 10]
     # print(f"Strikes: {strikes}")
     
@@ -65,7 +81,7 @@ def main(ticker: str, expiry_arg: str | None, width: int, data: int):
     
     rights = ['C', 'P']
     
-    contracts = [Option("SPX", expiration, strike, right, 'CBOE', tradingClass="SPXW")
+    contracts = [Option(ticker_name, expiration, strike, right, trading_exchange, tradingClass=trading_class)
                  for expiration in expirations
                  for strike in strikes
                  for right in rights]
@@ -75,6 +91,9 @@ def main(ticker: str, expiry_arg: str | None, width: int, data: int):
     #              for right in rights]
     
     contracts = ib.qualifyContracts(*contracts)
+    
+    # test = ib.reqMktData(*contracts, '', False)
+    # ib.reqMktData(contract_call, genericTickList="100,101,104,105,106", snapshot=False)
     
     ib.sleep(1)
     
@@ -86,7 +105,16 @@ def main(ticker: str, expiry_arg: str | None, width: int, data: int):
     for ticker in tickers:
         contract = ticker.contract
         
+        print(f"ticker: {ticker}")
+        
+        if contract.right == "C":
+            open_interest = ticker.callOpenInterest
+        else:
+            open_interest = ticker.putOpenInterest
+        
         greeks = ticker.modelGreeks
+        
+        # print(f"Open interest: {open_interest}")
         
         data_point = {
             'strike': contract.strike,
@@ -101,8 +129,8 @@ def main(ticker: str, expiry_arg: str | None, width: int, data: int):
 
         filtered_data.append(data_point)
 
-    filtered_df = util.df(filtered_data)
-    filtered_df.to_csv(f"./data/filtered_option_chain_SPX.csv", index=False)
+    # filtered_df = util.df(filtered_data)
+    # filtered_df.to_csv(f"./data/filtered_option_chain_SPX.csv", index=False)
     
     # print(f"Strikes: {strikes}")
     # expirations = sorted(chain[0].expirations)
