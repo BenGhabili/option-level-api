@@ -10,7 +10,7 @@
 # ---------------------------------------------------------
 from pathlib import Path
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime
 
 BAND_PCT = 0.4
 N_CALL = 6
@@ -84,7 +84,7 @@ def workable_oi_levels(
         elif p >= imbalance_k * max(c, 1):
             c = 0
         final_rows.append({
-            'date'     : expiry,
+            'expiry'     : expiry,
             'timestamp': '',           # left blank by design
             'strike'   : r['strike'],
             'call_oi'  : int(c),
@@ -97,7 +97,7 @@ def workable_oi_levels(
     print(f"✅  Saved {len(final_rows)} levels → {out_path}")
 
 
-def append_oi_data(results, ticker, data_dir: str = "./data"):
+def append_oi_data(results, ticker, expiry, data_dir: str = "./data"):
     """
     Append a batch of OI results to data/{ticker}_oi.csv, creating the file if needed.
 
@@ -115,18 +115,18 @@ def append_oi_data(results, ticker, data_dir: str = "./data"):
 
     # Build DataFrame of new rows
     rows = []
-    now_date = date.today().isoformat()
+
     now_ts   = datetime.now().isoformat(timespec='minutes')
     default_ts = now_ts.replace('-', '').replace(':', '').replace('T', '')
     for result in results:
         rows.append({
-            "date":      now_date,
+            "expiry":      expiry,
             "timestamp": default_ts,
             "strike":    result["strike"],
             "call_oi":   result["call"]["oi"],
             "put_oi":    result["put"]["oi"]
         })
-    new_df = pd.DataFrame(rows, columns=["date", "timestamp", "strike", "call_oi", "put_oi"])
+    new_df = pd.DataFrame(rows, columns=["expiry", "timestamp", "strike", "call_oi", "put_oi"])
 
     # Load existing (if any) and append
     if csv_path.exists():
