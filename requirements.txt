@@ -6,3 +6,4 @@ setuptools
 boto3
 ib_insync
 tzdata
+pandas

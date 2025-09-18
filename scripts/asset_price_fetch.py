@@ -9,6 +9,9 @@ from pathlib import Path
 from datetime import datetime, timezone
 from ib_insync import Stock, IB, Future, Contract
 
+
+TARGET_FOLDER = r"D:\TradingData"
+
 # ───────────────────────────────────────────────────────────
 
 ###############################################################################
@@ -45,8 +48,8 @@ async def main(data_type = 1):
         spy_ticker = ib.reqMktData(Stock('SPY', 'SMART', 'USD'), '233', snapshot=False)
         qqq_ticker = ib.reqMktData(Stock('QQQ', 'SMART', 'USD'), '233', snapshot=False)
         spx_ticker = Contract(symbol='SPX', secType='IND', exchange='CBOE', currency='USD')
-        es = Future(symbol='ES', lastTradeDateOrContractMonth='202506', exchange='CME', currency='USD')
-        nq = Future(symbol='NQ', lastTradeDateOrContractMonth='202506', exchange='CME', currency='USD')
+        es = Future(symbol='ES', lastTradeDateOrContractMonth='202512', exchange='CME', currency='USD')
+        nq = Future(symbol='NQ', lastTradeDateOrContractMonth='202512', exchange='CME', currency='USD')
 
         ticker_es = ib.reqMktData(es, '', False, False)
         ticker_nq = ib.reqMktData(nq, '', False, False)
@@ -106,7 +109,13 @@ async def main(data_type = 1):
         }
         
         # ❸  APPEND / CREATE CSV
-        csv_path = Path("./data/ratio-collections.csv")
+        now = datetime.now()
+        yyyymm     = now.strftime('%Y%m')         # e.g. 202507
+        base_dir = Path(TARGET_FOLDER) / "ratio-collections"
+        base_dir.mkdir(parents=True, exist_ok=True)
+
+        csv_path = base_dir / f"{yyyymm}_ratios.csv"
+        # csv_path = Path("./data/ratio-collections.csv")
         
         if csv_path.exists():
             # load to keep column order consistent

@@ -97,7 +97,7 @@ def workable_oi_levels(
     print(f"✅  Saved {len(final_rows)} levels → {out_path}")
 
 
-def append_oi_data(results, ticker, expiry, data_dir: str = "./data"):
+def append_oi_data(results, ticker, expiry, data_dir: str = "./data", spot: int | None = None):
     """
     Append a batch of OI results to data/{ticker}_oi.csv, creating the file if needed.
 
@@ -106,12 +106,18 @@ def append_oi_data(results, ticker, expiry, data_dir: str = "./data"):
     ticker:  the symbol string, e.g. "ES" or "NQ"
     data_dir: path to directory where CSVs live
     """
+    now = datetime.now()
+    yyyymm     = now.strftime('%Y%m')         # e.g. 202507
+    base_dir = Path(TARGET_FOLDER) / "historical_OI"
+    month_folder = Path(base_dir) / yyyymm
     # ensure directory exists
     data_dir = Path(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
+    # data_dir.mkdir(parents=True, exist_ok=True)
+    base_dir.mkdir(parents=True, exist_ok=True)
 
     # CSV path for this ticker
-    csv_path = data_dir / f"{ticker}_oi.csv"
+    # csv_path = data_dir / f"{ticker}_oi.csv"
+    csv_path = base_dir / f"{yyyymm}_{ticker}_oi.csv"
 
     # Build DataFrame of new rows
     rows = []
@@ -119,14 +125,21 @@ def append_oi_data(results, ticker, expiry, data_dir: str = "./data"):
     now_ts   = datetime.now().isoformat(timespec='minutes')
     default_ts = now_ts.replace('-', '').replace(':', '').replace('T', '')
     for result in results:
-        rows.append({
+        row = {
             "expiry":      expiry,
             "timestamp": default_ts,
             "strike":    result["strike"],
             "call_oi":   result["call"]["oi"],
             "put_oi":    result["put"]["oi"]
-        })
-    new_df = pd.DataFrame(rows, columns=["expiry", "timestamp", "strike", "call_oi", "put_oi"])
+        }
+        if spot is not None:
+            row["spot"] = spot
+        rows.append(row)
+
+    base_columns = ["expiry", "timestamp", "strike", "call_oi", "put_oi"]
+    if rows and "spot" in rows[0]:
+        base_columns.append("spot")
+    new_df = pd.DataFrame(rows, columns=base_columns)
 
     # Load existing (if any) and append
     if csv_path.exists():
@@ -137,4 +150,58 @@ def append_oi_data(results, ticker, expiry, data_dir: str = "./data"):
 
     # Write back out
     df.to_csv(csv_path, index=False)
-    print(f"✅  Appended {len(new_df)} rows to {csv_path!r}")
+    log_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{log_time}] ✅  Appended {len(new_df)} rows → {csv_path!r}")
+
+
+def gex_data_save(results,
+                  ticker: str,
+                  base_dir: str = r"D:\TradingData",
+                  spot: int | None = None) -> None:
+    """
+    Append a snapshot of GEX data to a daily file located at
+    {base_dir}\YYYYMM\{TICKER}_GEX_YYYYMMDD.csv
+
+    Columns: timestamp (YYYYMMDDhhmm), strike, call_gex, put_gex
+    Each call simply *appends* the current run to the file for that day.
+    """
+    now = datetime.now()
+    yyyymm     = now.strftime('%Y%m')         # e.g. 202507
+    yyyymmdd   = now.strftime('%Y%m%d')       # e.g. 20250716
+    timestamp  = now.strftime('%Y%m%d%H%M')   # e.g. 202507161505
+
+    # ── 1. build folder + file paths ────────────────────────────────────────
+    month_folder = Path(base_dir) / yyyymm
+    month_folder.mkdir(parents=True, exist_ok=True)
+
+    csv_path = month_folder / f"{ticker.upper()}_GEX_{yyyymmdd}.csv"
+
+    # ── 2. create a DataFrame for this run ───────────────────────────────────
+    rows = []
+    for r in results:
+        row = {
+            "timestamp": timestamp,
+            "strike"   : r["strike"],
+            "call_gex" : round(r["call"]["call_gex"] / 1e6, 1),
+            "put_gex"  : round(r["put"]["put_gex"]  / 1e6, 1),
+            "net_gex"  : round(r["net_gex"]         / 1e6, 1),
+        }
+        if spot is not None:
+            row["spot"] = spot
+        rows.append(row)
+
+    columns = ["timestamp", "strike", "call_gex", "put_gex", "net_gex"]
+    if rows and "spot" in rows[0]:
+        columns.append("spot")
+    new_df = pd.DataFrame(rows, columns=columns)
+
+    # ── 3. append (or create) ────────────────────────────────────────────────
+    if csv_path.exists():
+        df = pd.read_csv(csv_path)
+        df = pd.concat([df, new_df], ignore_index=True)
+    else:
+        df = new_df
+
+    df.to_csv(csv_path, index=False)
+    log_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{log_time}] ✅  Appended {len(new_df)} rows → {csv_path}")   

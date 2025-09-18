@@ -154,3 +154,33 @@ async def fetch_stock_ticker(ib, ticker):
     await asyncio.sleep(3)
 
     return ticker_data
+
+async def fetch_atm_iv(ib: IB, ticker: str, expiry: str, spot: float,
+                       right: str = "C", timeout: float = 5.0) -> float:
+    """
+    Return the implied volatility of the option whose strike is nearest to <spot>.
+    One leg (call _or_ put) is enough for an EM estimate.
+    """
+    strike = round(spot)
+
+    contract = Option(ticker, expiry, strike, right, "SMART")
+    tk = ib.reqMktData(contract, genericTickList=GENERIC_TICKS, snapshot=False)
+
+    call_ticker = await asyncio.gather(
+        get_reliable_ticker(ib, contract, check_greeks=True)
+    )
+    
+    print(call_ticker)
+
+    # try:
+    #     await asyncio.wait_for(tk.updateEvent, timeout)
+    # except asyncio.TimeoutError:
+    #     raise RuntimeError(f"IV quote timed out for {contract.localSymbol}")
+    # 
+    # greeks = tk.modelGreeks
+    # if greeks is None or np.isnan(greeks.impliedVol):
+    #     raise RuntimeError(f"No IV for {contract.localSymbol}")
+
+    # return greeks.impliedVol
+    
+    return True

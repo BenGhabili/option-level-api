@@ -150,3 +150,6 @@ src/services/__pycache__/
 
 .idea
 .data/
+
+*.xml
+*.txt
